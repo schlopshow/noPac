@@ -15,11 +15,12 @@ dependencies = [
     "ldap3>=2.9.1",
     "ldapdomaindump>=0.9.4",
     "pyasn1>=0.4.8",
+    "setuptools<81",
 ]
 
 [project.scripts]
 noPac = "noPac:main"
-scanner = "scanner:main"
+noPacScanner = "scanner:main"
 
 [project.urls]
 Repository = "https://github.com/WazeHell/sam-the-admin"
@@ -29,7 +30,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["noPac", "scanner"]
+py-modules = ["noPac", "noPacScanner"]
 
 [tool.setuptools.packages.find]
 include = ["utils*"]
